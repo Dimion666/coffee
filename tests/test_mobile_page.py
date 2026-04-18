@@ -18,8 +18,8 @@ class MobilePageTests(unittest.TestCase):
     def test_mobile_page_is_available(self) -> None:
         response = self.client.get("/mobile")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Coffee Mobile Route Flow", response.text)
-        self.assertIn("tesseract.js", response.text.lower())
+        self.assertIn("Coffee Mobile Upload", response.text)
+        self.assertIn("uploadButton", response.text)
         self.assertIn(settings.GOOGLE_SHEETS_URL, response.text)
 
 

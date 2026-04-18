@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.demo_scenarios import DEMO_SCENARIOS
 from app.core.config import settings
@@ -10,11 +10,13 @@ from app.schemas.optimize import OptimizeRequest, OptimizedRouteResult
 from app.schemas.parse import ParseTextRequest, ParseTextResponse
 from app.schemas.process_route import ProcessRouteRequest, ProcessRouteResponse
 from app.schemas.process_route_text import ProcessRouteTextResponse
+from app.schemas.upload import RoutePhotoUploadResponse
 from app.services.geocoding_service import GeocodingService, ROUTE_START_POINT_ADDRESS
 from app.services.address_normalizer_service import AddressNormalizerService
 from app.services.address_parser_service import AddressParserService
 from app.services.process_route_service import ProcessRouteService
 from app.services.process_route_text_service import ProcessRouteTextService
+from app.services.route_photo_service import RoutePhotoService, RoutePhotoUploadError
 from app.services.route_optimizer_service import RouteOptimizerService
 from app.services.sheets_service import SheetsService
 
@@ -34,11 +36,26 @@ process_route_text_service = ProcessRouteTextService(
     geocoding_service=geocoding_service,
     process_route_service=process_route_service,
 )
+route_photo_service = RoutePhotoService()
 
 
 @router.get("/api/v1/system/ping", tags=["system"])
 async def ping() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@router.post(
+    "/api/v1/upload-route-photo",
+    response_model=RoutePhotoUploadResponse,
+    tags=["upload"],
+)
+async def upload_route_photo(
+    file: UploadFile | None = File(default=None),
+) -> RoutePhotoUploadResponse:
+    try:
+        return await route_photo_service.inspect_upload(file)
+    except RoutePhotoUploadError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @router.get("/api/v1/demo-scenarios", response_model=DemoScenariosResponse, tags=["demo"])

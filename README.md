@@ -23,6 +23,7 @@ The API starts on `http://127.0.0.1:8000`.
 - `GET /health`
 - `GET /api/v1/system/ping`
 - `GET /api/v1/demo-scenarios`
+- `POST /api/v1/upload-route-photo`
 - `POST /api/v1/parse/text`
 - `POST /api/v1/normalize`
 - `POST /api/v1/geocode`
@@ -109,14 +110,11 @@ Open `http://<your-local-ip>:8000/mobile` on the phone.
 
 Flow:
 - take a photo of the route sheet
-- wait for OCR in the browser
-- correct text if needed
-- tap `Обработать маршрут и записать в Sheets`
+- tap `Загрузить фото`
+- wait for upload status from backend
 - use `Открыть Google Sheets` to jump to the table from the phone
 
 Expected success:
-- OCR fills the text area
 - backend returns `success = true`
-- valid points receive `route_order`
+- upload result shows filename, type, and size
 - Google Sheets link is visible on the page and opens the configured spreadsheet
-- written rows match the latest run in the configured worksheet

@@ -3,13 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Coffee Mobile Route Flow</title>
+  <title>Coffee Mobile Upload</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f4eadf;
       --paper: #fffaf4;
       --ink: #2a211c;
       --muted: #6d5b50;
@@ -80,18 +79,17 @@
     }
 
     h1 {
-      font-size: 28px;
+      font-size: 30px;
       line-height: 1.05;
       margin: 0 0 10px;
-      max-width: 12ch;
     }
 
-    .sub {
+    .sub,
+    .hint {
       margin: 0;
       color: var(--muted);
       font-size: 15px;
       line-height: 1.5;
-      max-width: 54ch;
     }
 
     .stack {
@@ -104,21 +102,15 @@
     }
 
     .card h2 {
-      margin: 0 0 12px;
+      margin: 0 0 10px;
       font-size: 18px;
-    }
-
-    .hint {
-      margin: 0 0 12px;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.45;
     }
 
     .dropzone {
       display: flex;
       flex-direction: column;
       gap: 12px;
+      margin-top: 12px;
     }
 
     .capture {
@@ -126,7 +118,7 @@
       justify-content: center;
       align-items: center;
       width: 100%;
-      min-height: 120px;
+      min-height: 132px;
       border: 2px dashed var(--line);
       border-radius: 20px;
       background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(244,234,223,0.9));
@@ -137,7 +129,9 @@
       cursor: pointer;
     }
 
-    .capture input { display: none; }
+    .capture input {
+      display: none;
+    }
 
     .preview {
       display: none;
@@ -152,6 +146,7 @@
     .actions {
       display: grid;
       gap: 10px;
+      margin-top: 12px;
     }
 
     button,
@@ -191,18 +186,6 @@
       color: var(--ink);
     }
 
-    textarea {
-      width: 100%;
-      min-height: 220px;
-      resize: vertical;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 14px;
-      font: inherit;
-      background: #fff;
-      color: var(--ink);
-    }
-
     .status {
       display: none;
       padding: 12px 14px;
@@ -216,26 +199,6 @@
     .status.ok { background: #dff1e6; color: var(--ok); }
     .status.warn { background: #f8ebd8; color: var(--warn); }
     .status.error { background: #f7dde0; color: var(--error); }
-
-    .summary {
-      display: grid;
-      gap: 10px;
-    }
-
-    .pill-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .pill {
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: #f0e2d3;
-      color: var(--ink);
-      font-size: 13px;
-      font-weight: 700;
-    }
 
     .result-list {
       margin: 0;
@@ -276,21 +239,21 @@
 <body>
   <main class="shell">
     <section class="hero">
-      <div class="eyebrow">Coffee mobile flow</div>
-      <h1>Фото листа в таблицу за один проход</h1>
+      <div class="eyebrow">Coffee mobile upload</div>
+      <h1>Coffee</h1>
       <p class="sub">
-        Сфотографируйте маршрутный лист на телефоне, дождитесь OCR, при необходимости поправьте текст
-        и отправьте в существующий pipeline: обработка маршрута, оптимизация и запись в Google Sheets.
+        Загрузите фото маршрутного листа с телефона. В этом блоке backend принимает изображение,
+        проверяет формат и размер, а страница показывает понятный статус загрузки.
       </p>
     </section>
 
     <div class="stack">
       <section class="card">
-        <h2>1. Фото</h2>
-        <p class="hint">Снимок лучше делать при хорошем свете, чтобы адреса и телефоны были ровными и читаемыми.</p>
+        <h2>1. Выберите фото</h2>
+        <p class="hint">Поддерживаются JPG и PNG. Файл не должен быть пустым или слишком большим.</p>
         <div class="dropzone">
           <label class="capture">
-            <input id="imageInput" type="file" accept="image/*" capture="environment">
+            <input id="imageInput" type="file" accept="image/jpeg,image/png" capture="environment">
             <span>Нажмите, чтобы сделать фото или выбрать изображение</span>
           </label>
           <img id="preview" class="preview" alt="Предпросмотр фото">
@@ -298,97 +261,57 @@
       </section>
 
       <section class="card">
-        <h2>2. OCR</h2>
-        <p class="hint">OCR выполняется прямо в браузере. После распознавания текст можно поправить вручную перед отправкой.</p>
+        <h2>2. Отправьте файл</h2>
+        <p class="hint">Файл уходит в backend через multipart/form-data на upload endpoint.</p>
         <div class="actions">
-          <button id="ocrButton" class="secondary" disabled>Распознать текст</button>
-          <div id="ocrStatus" class="status info"></div>
-          <textarea id="ocrText" placeholder="Здесь появится распознанный текст. При необходимости поправьте ошибки и отправьте в pipeline."></textarea>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>3. Обработка и запись</h2>
-        <p class="hint">Этот шаг запускает существующий backend flow: parse -> normalize -> geocode -> optimize -> export.</p>
-        <div class="actions">
-          <button id="processButton" class="primary" disabled>Обработать маршрут и записать в Sheets</button>
-          <div id="processStatus" class="status info"></div>
+          <button id="uploadButton" class="primary" disabled>Загрузить фото</button>
+          <div id="uploadStatus" class="status info"></div>
           <a id="sheetLink" class="link-button secondary" href="__GOOGLE_SHEETS_URL__" target="_blank" rel="noreferrer">Открыть Google Sheets</a>
         </div>
       </section>
 
       <section class="card">
-        <h2>4. Результат</h2>
-        <div class="summary">
-          <div id="summaryPills" class="pill-row"></div>
-          <ul id="resultList" class="result-list"></ul>
-        </div>
+        <h2>3. Результат</h2>
+        <ul id="resultList" class="result-list"></ul>
       </section>
     </div>
 
-    <p class="footer-note">Если OCR распознал текст грязно, поправьте адреса и телефоны в поле перед отправкой. Это самый быстрый путь к стабильному demo на телефоне.</p>
+    <p class="footer-note">Следующий блок сможет использовать это фото для OCR и полного route pipeline.</p>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script>
     const imageInput = document.getElementById("imageInput");
     const preview = document.getElementById("preview");
-    const ocrButton = document.getElementById("ocrButton");
-    const processButton = document.getElementById("processButton");
-    const ocrText = document.getElementById("ocrText");
-    const ocrStatus = document.getElementById("ocrStatus");
-    const processStatus = document.getElementById("processStatus");
-    const sheetLink = document.getElementById("sheetLink");
-    const summaryPills = document.getElementById("summaryPills");
+    const uploadButton = document.getElementById("uploadButton");
+    const uploadStatus = document.getElementById("uploadStatus");
     const resultList = document.getElementById("resultList");
 
     let currentFile = null;
 
-    function setStatus(element, tone, message) {
-      element.className = `status visible ${tone}`;
-      element.textContent = message;
+    function setStatus(tone, message) {
+      uploadStatus.className = `status visible ${tone}`;
+      uploadStatus.textContent = message;
     }
 
-    function clearStatus(element) {
-      element.className = "status info";
-      element.textContent = "";
+    function clearStatus() {
+      uploadStatus.className = "status info";
+      uploadStatus.textContent = "";
     }
 
-    function setSheetLink(spreadsheetId) {
-      if (!spreadsheetId) {
-        return;
-      }
-
-      sheetLink.href = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
-    }
-
-    function renderResult(response) {
-      summaryPills.innerHTML = "";
+    function renderResult(payload) {
       resultList.innerHTML = "";
 
-      const pills = [
-        `Успех: ${response.success ? "да" : "нет"}`,
-        `Распознано точек: ${response.parsed_points_count ?? 0}`,
-        `Eligible: ${response.optimization?.eligible_points ?? 0}`,
-        `Записано строк: ${response.export?.rows_written ?? 0}`
+      const entries = [
+        ["Файл", payload.filename || "—"],
+        ["Тип", payload.content_type || "—"],
+        ["Размер", `${payload.file_size ?? 0} bytes`],
+        ["Сообщение", payload.message || "—"]
       ];
 
-      pills.forEach((text) => {
-        const pill = document.createElement("div");
-        pill.className = "pill";
-        pill.textContent = text;
-        summaryPills.appendChild(pill);
-      });
-
-      (response.points || []).forEach((point) => {
+      entries.forEach(([label, value]) => {
         const item = document.createElement("li");
         item.className = "result-item";
-        const routeOrder = point.route_order == null ? "—" : point.route_order;
-        item.innerHTML = `
-          <strong>${point.contact_name || "Без контакта"}</strong>
-          <span>Порядок: ${routeOrder} | Статус: ${point.status} | Geocode: ${point.geocode_status}</span>
-          <span>${point.full_address || point.raw_address || "Адрес не найден"}</span>
-        `;
+        item.innerHTML = `<strong>${label}</strong><span>${value}</span>`;
         resultList.appendChild(item);
       });
     }
@@ -396,87 +319,49 @@
     imageInput.addEventListener("change", () => {
       const file = imageInput.files?.[0];
       currentFile = file || null;
-      ocrButton.disabled = !currentFile;
+      uploadButton.disabled = !currentFile;
+      resultList.innerHTML = "";
+      clearStatus();
+
       if (!currentFile) {
         preview.style.display = "none";
-        processButton.disabled = !ocrText.value.trim();
+        preview.removeAttribute("src");
         return;
       }
 
       preview.src = URL.createObjectURL(currentFile);
       preview.style.display = "block";
-      clearStatus(ocrStatus);
     });
 
-    ocrText.addEventListener("input", () => {
-      processButton.disabled = !ocrText.value.trim();
-    });
-
-    ocrButton.addEventListener("click", async () => {
-      if (!currentFile) return;
-
-      ocrButton.disabled = true;
-      processButton.disabled = true;
-      setStatus(ocrStatus, "info", "OCR запущен. Это может занять до минуты на телефоне.");
-
-      try {
-        const result = await Tesseract.recognize(currentFile, "ukr+rus+eng", {
-          logger: (message) => {
-            if (message.status === "recognizing text" && typeof message.progress === "number") {
-              const percent = Math.round(message.progress * 100);
-              setStatus(ocrStatus, "info", `OCR: ${percent}%`);
-            }
-          }
-        });
-
-        ocrText.value = result.data.text.trim();
-        processButton.disabled = !ocrText.value.trim();
-        setStatus(ocrStatus, "ok", "Текст распознан. Проверьте и при необходимости поправьте перед отправкой.");
-      } catch (error) {
-        setStatus(ocrStatus, "error", `OCR не удалось выполнить: ${error.message}`);
-      } finally {
-        ocrButton.disabled = !currentFile;
-      }
-    });
-
-    processButton.addEventListener("click", async () => {
-      const text = ocrText.value.trim();
-      if (!text) {
-        setStatus(processStatus, "warn", "Сначала распознайте фото или вставьте текст вручную.");
+    uploadButton.addEventListener("click", async () => {
+      if (!currentFile) {
+        setStatus("warn", "Сначала выберите фото маршрутного листа.");
         return;
       }
 
-      processButton.disabled = true;
-      setSheetLink(null);
-      setStatus(processStatus, "info", "Запускаю pipeline: parse -> optimize -> export.");
+      uploadButton.disabled = true;
+      setStatus("info", "Файл загружается в backend...");
+
+      const formData = new FormData();
+      formData.append("file", currentFile);
 
       try {
-        const response = await fetch("/api/v1/process-route-text", {
+        const response = await fetch("/api/v1/upload-route-photo", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ text })
+          body: formData
         });
-
         const payload = await response.json();
+
         if (!response.ok) {
-          throw new Error(payload.detail || "Не удалось обработать маршрут.");
+          throw new Error(payload.detail || "Не удалось загрузить файл.");
         }
 
         renderResult(payload);
-        setSheetLink(payload.export?.spreadsheet_id);
-        setStatus(
-          processStatus,
-          payload.success ? "ok" : "warn",
-          payload.success
-            ? `Готово. Записано строк: ${payload.export?.rows_written ?? 0}.`
-            : `Маршрут обработан с ошибкой: ${payload.error_message || "см. детали ниже"}.`
-        );
+        setStatus("ok", `Загрузка успешна: ${payload.filename}.`);
       } catch (error) {
-        setStatus(processStatus, "error", `Ошибка pipeline: ${error.message}`);
+        setStatus("error", `Ошибка загрузки: ${error.message}`);
       } finally {
-        processButton.disabled = !ocrText.value.trim();
+        uploadButton.disabled = !currentFile;
       }
     });
   </script>
