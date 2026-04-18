@@ -13,7 +13,7 @@ class Settings(BaseModel):
 
     GOOGLE_MAPS_API_KEY: str = Field(default="")
     GOOGLE_SHEETS_SPREADSHEET_ID: str = Field(default="")
-    GOOGLE_SHEETS_TARGET_RANGE: str = Field(default="routes!A:I")
+    GOOGLE_SHEETS_TARGET_RANGE: str = Field(default="routes!A:C")
     GOOGLE_SERVICE_ACCOUNT_FILE: str = Field(
         default="credentials/service_account.json"
     )
@@ -30,7 +30,7 @@ def get_settings() -> Settings:
         GOOGLE_SHEETS_SPREADSHEET_ID=os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID", ""),
         GOOGLE_SHEETS_TARGET_RANGE=os.getenv(
             "GOOGLE_SHEETS_TARGET_RANGE",
-            "routes!A:I",
+            "routes!A:C",
         ),
         GOOGLE_SERVICE_ACCOUNT_FILE=os.getenv(
             "GOOGLE_SERVICE_ACCOUNT_FILE",
