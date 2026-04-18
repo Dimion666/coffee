@@ -22,6 +22,7 @@ The API starts on `http://127.0.0.1:8000`.
 
 - `GET /health`
 - `GET /api/v1/system/ping`
+- `POST /api/v1/parse/text`
 
 ## Required environment variables
 
