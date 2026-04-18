@@ -3,15 +3,18 @@ from fastapi import APIRouter, HTTPException
 from app.core.config import settings
 from app.schemas.geocode import GeocodeRequest, GeocodeResponse, StartPoint
 from app.schemas.normalize import NormalizeRequest, NormalizeResponse
+from app.schemas.optimize import OptimizeRequest, OptimizedRouteResult
 from app.schemas.parse import ParseTextRequest, ParseTextResponse
 from app.services.geocoding_service import GeocodingService, ROUTE_START_POINT_ADDRESS
 from app.services.address_normalizer_service import AddressNormalizerService
 from app.services.address_parser_service import AddressParserService
+from app.services.route_optimizer_service import RouteOptimizerService
 
 router = APIRouter()
 address_parser_service = AddressParserService()
 address_normalizer_service = AddressNormalizerService()
 geocoding_service = GeocodingService()
+route_optimizer_service = RouteOptimizerService(geocoding_service=geocoding_service)
 
 
 @router.get("/api/v1/system/ping", tags=["system"])
@@ -44,3 +47,14 @@ async def geocode(payload: GeocodeRequest) -> GeocodeResponse:
         points=points,
         start_point=StartPoint(address=ROUTE_START_POINT_ADDRESS),
     )
+
+
+@router.post("/api/v1/optimize", response_model=OptimizedRouteResult, tags=["optimize"])
+async def optimize(payload: OptimizeRequest) -> OptimizedRouteResult:
+    if not settings.GOOGLE_MAPS_API_KEY.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="GOOGLE_MAPS_API_KEY is required for route optimization.",
+        )
+
+    return route_optimizer_service.optimize_route(payload.points)

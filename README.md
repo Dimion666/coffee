@@ -25,6 +25,7 @@ The API starts on `http://127.0.0.1:8000`.
 - `POST /api/v1/parse/text`
 - `POST /api/v1/normalize`
 - `POST /api/v1/geocode`
+- `POST /api/v1/optimize`
 
 ## Required environment variables
 

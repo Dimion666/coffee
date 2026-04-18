@@ -136,6 +136,57 @@ class GeocodingService:
         response.raise_for_status()
         return response.json()
 
+    def _parse_geocoding_result(self, clean_address: str, data: dict) -> dict:
+        api_status = data.get("status")
+        results = data.get("results", [])
+
+        if api_status == "ZERO_RESULTS":
+            return {
+                "formatted_address": None,
+                "lat": None,
+                "lng": None,
+                "geocode_status": "not_found",
+                "geocode_precision": "unknown",
+                "downgraded": False,
+            }
+
+        if api_status != "OK" or not results:
+            raise ValueError(f"Unexpected geocoding response status: {api_status}")
+
+        first_result = results[0]
+        location = first_result.get("geometry", {}).get("location", {})
+        formatted_address = first_result.get("formatted_address")
+        lat = location.get("lat")
+        lng = location.get("lng")
+        precision = self.evaluate_geocode_precision(clean_address, first_result)
+
+        if formatted_address is None or lat is None or lng is None:
+            raise ValueError("Incomplete geocoding response payload")
+
+        if precision == "too_general":
+            return {
+                "formatted_address": None,
+                "lat": None,
+                "lng": None,
+                "geocode_status": "not_found",
+                "geocode_precision": "too_general",
+                "downgraded": True,
+            }
+
+        return {
+            "formatted_address": formatted_address,
+            "lat": lat,
+            "lng": lng,
+            "geocode_status": "ok",
+            "geocode_precision": precision,
+            "downgraded": False,
+        }
+
+    def geocode_address(self, clean_address: str) -> dict:
+        with httpx.Client(timeout=GEOCODING_TIMEOUT) as client:
+            data = self._geocode_address(client, clean_address)
+        return self._parse_geocoding_result(clean_address, data)
+
     def geocode_points(self, points: List[NormalizedPoint]) -> List[GeocodedPoint]:
         geocoded_points: List[GeocodedPoint] = []
         stats = {
@@ -157,43 +208,20 @@ class GeocodingService:
 
                 try:
                     data = self._geocode_address(client, point.clean_address)
-                    api_status = data.get("status")
-                    results = data.get("results", [])
+                    parsed_result = self._parse_geocoding_result(point.clean_address, data)
 
-                    if api_status == "ZERO_RESULTS":
-                        geocoded_points.append(self._build_error_point(point, "not_found"))
-                        stats["not_found"] += 1
-                        if len(rejected_examples) < 3:
-                            rejected_examples.append(point.clean_address)
-                        continue
-
-                    if api_status != "OK" or not results:
-                        raise ValueError(
-                            f"Unexpected geocoding response status: {api_status}"
-                        )
-
-                    first_result = results[0]
-                    location = first_result.get("geometry", {}).get("location", {})
-                    formatted_address = first_result.get("formatted_address")
-                    lat = location.get("lat")
-                    lng = location.get("lng")
-                    precision = self.evaluate_geocode_precision(
-                        point.clean_address,
-                        first_result,
-                    )
-
-                    if formatted_address is None or lat is None or lng is None:
-                        raise ValueError("Incomplete geocoding response payload")
-
-                    if precision == "too_general":
+                    if parsed_result["geocode_status"] == "not_found":
                         geocoded_points.append(
                             self._build_error_point(
                                 point,
                                 "not_found",
-                                precision="too_general",
+                                precision=parsed_result["geocode_precision"],
                             )
                         )
-                        stats["downgraded"] += 1
+                        if parsed_result["downgraded"]:
+                            stats["downgraded"] += 1
+                        else:
+                            stats["not_found"] += 1
                         if len(rejected_examples) < 3:
                             rejected_examples.append(point.clean_address)
                         continue
@@ -201,13 +229,13 @@ class GeocodingService:
                     geocoded_points.append(
                         self._build_ok_point(
                             point,
-                            formatted_address,
-                            lat,
-                            lng,
-                            precision=precision,
+                            parsed_result["formatted_address"],
+                            parsed_result["lat"],
+                            parsed_result["lng"],
+                            precision=parsed_result["geocode_precision"],
                         )
                     )
-                    if precision == "exact":
+                    if parsed_result["geocode_precision"] == "exact":
                         stats["exact"] += 1
                     else:
                         stats["acceptable"] += 1
