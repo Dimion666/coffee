@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.core.config import settings
+from app.schemas.export import ExportRequest, ExportResponse
 from app.schemas.geocode import GeocodeRequest, GeocodeResponse, StartPoint
 from app.schemas.normalize import NormalizeRequest, NormalizeResponse
 from app.schemas.optimize import OptimizeRequest, OptimizedRouteResult
@@ -9,12 +10,14 @@ from app.services.geocoding_service import GeocodingService, ROUTE_START_POINT_A
 from app.services.address_normalizer_service import AddressNormalizerService
 from app.services.address_parser_service import AddressParserService
 from app.services.route_optimizer_service import RouteOptimizerService
+from app.services.sheets_service import SheetsService
 
 router = APIRouter()
 address_parser_service = AddressParserService()
 address_normalizer_service = AddressNormalizerService()
 geocoding_service = GeocodingService()
 route_optimizer_service = RouteOptimizerService(geocoding_service=geocoding_service)
+sheets_service = SheetsService()
 
 
 @router.get("/api/v1/system/ping", tags=["system"])
@@ -58,3 +61,11 @@ async def optimize(payload: OptimizeRequest) -> OptimizedRouteResult:
         )
 
     return route_optimizer_service.optimize_route(payload.points)
+
+
+@router.post("/api/v1/export-sheet", response_model=ExportResponse, tags=["export"])
+async def export_sheet(payload: ExportRequest) -> ExportResponse:
+    try:
+        return sheets_service.export_points(payload.points)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

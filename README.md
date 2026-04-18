@@ -26,6 +26,7 @@ The API starts on `http://127.0.0.1:8000`.
 - `POST /api/v1/normalize`
 - `POST /api/v1/geocode`
 - `POST /api/v1/optimize`
+- `POST /api/v1/export-sheet`
 
 ## Required environment variables
 
@@ -34,7 +35,9 @@ The API starts on `http://127.0.0.1:8000`.
 - `APP_PORT`
 - `GOOGLE_MAPS_API_KEY`
 - `GOOGLE_SHEETS_SPREADSHEET_ID`
+- `GOOGLE_SHEETS_WORKSHEET_NAME`
 - `GOOGLE_SHEETS_TARGET_RANGE`
+- `GOOGLE_APPLICATION_CREDENTIALS`
 - `GOOGLE_SERVICE_ACCOUNT_FILE`
 - `SQLITE_DB_PATH`
 
