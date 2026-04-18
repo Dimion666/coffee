@@ -28,6 +28,7 @@ The API starts on `http://127.0.0.1:8000`.
 - `POST /api/v1/optimize`
 - `POST /api/v1/export-sheet`
 - `POST /api/v1/process-route`
+- `POST /api/v1/process-route-text`
 
 ## Required environment variables
 
