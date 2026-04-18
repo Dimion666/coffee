@@ -38,101 +38,185 @@ class GeocodeEndpointTests(unittest.TestCase):
     def tearDown(self) -> None:
         settings.GOOGLE_MAPS_API_KEY = self.original_key
 
-    def test_geocode_endpoint_handles_all_statuses(self) -> None:
-        payload = {
-            "points": [
-                {
-                    "contact_name": "Ольга",
-                    "phone": "0660841846",
-                    "raw_address": "вул. Антоновича 28 (БЦ Волна)",
-                    "clean_address": "Киев, вул. Антоновича 28",
-                    "full_address": "вул. Антоновича 28 (БЦ Волна)",
-                    "status": "valid",
-                    "is_crossed": False,
-                },
-                {
-                    "contact_name": "Ірина",
-                    "phone": "0670000001",
-                    "raw_address": "Софіївська Борщагівка, вул. Соборна 126",
-                    "clean_address": "Софіївська Борщагівка, вул. Соборна 126",
-                    "full_address": "Софіївська Борщагівка, вул. Соборна 126",
-                    "status": "valid",
-                    "is_crossed": False,
-                },
-                {
-                    "contact_name": "Самовивоз",
-                    "phone": "0501112233",
-                    "raw_address": "самовивоз, склад №1",
-                    "clean_address": "Киев, самовивоз, склад №1",
-                    "full_address": "самовивоз, склад №1",
-                    "status": "skipped",
-                    "is_crossed": False,
-                },
-                {
-                    "contact_name": "Нет адреса",
-                    "phone": "0670000002",
-                    "raw_address": "несуществующий адрес 12345",
-                    "clean_address": "Киев, несуществующий адрес 12345",
-                    "full_address": "несуществующий адрес 12345",
-                    "status": "valid",
-                    "is_crossed": False,
-                },
-                {
-                    "contact_name": "Сетевая ошибка",
-                    "phone": "0670000003",
-                    "raw_address": "Киев, ул. Тестовая 99",
-                    "clean_address": "Киев, ул. Тестовая 99",
-                    "full_address": "Киев, ул. Тестовая 99",
-                    "status": "valid",
-                    "is_crossed": False,
-                },
-            ]
+    def _post_geocode(self, point: dict, response_payload: object) -> dict:
+        side_effect = [response_payload] if not isinstance(response_payload, Exception) else [response_payload]
+        with patch("httpx.Client.get", side_effect=side_effect):
+            response = self.client.post("/api/v1/geocode", json={"points": [point]})
+        self.assertEqual(response.status_code, 200)
+        return response.json()
+
+    def test_geocode_endpoint_marks_exact_result(self) -> None:
+        point = {
+            "contact_name": "Exact",
+            "phone": "111",
+            "raw_address": "Kyiv, Antonovycha 28",
+            "clean_address": "Kyiv, Antonovycha 28",
+            "full_address": "Kyiv, Antonovycha 28",
+            "status": "valid",
+            "is_crossed": False,
         }
+        google_response = MockResponse(
+            {
+                "status": "OK",
+                "results": [
+                    {
+                        "formatted_address": "Antonovycha St, 28, Kyiv, Ukraine",
+                        "types": ["street_address"],
+                        "address_components": [
+                            {"long_name": "28", "types": ["street_number"]},
+                            {"long_name": "Antonovycha St", "types": ["route"]},
+                        ],
+                        "geometry": {
+                            "location": {"lat": 50.4266, "lng": 30.5165},
+                            "location_type": "ROOFTOP",
+                        },
+                    }
+                ],
+            }
+        )
 
-        responses = [
-            MockResponse(
-                {
-                    "status": "OK",
-                    "results": [
-                        {
-                            "formatted_address": "вулиця Антоновича, 28, Київ, Україна, 02000",
-                            "geometry": {"location": {"lat": 50.4266, "lng": 30.5165}},
-                        }
-                    ],
-                }
-            ),
-            MockResponse(
-                {
-                    "status": "OK",
-                    "results": [
-                        {
-                            "formatted_address": "вулиця Соборна, 126, Софіївська Борщагівка, Київська область, Україна, 08131",
-                            "geometry": {"location": {"lat": 50.4072, "lng": 30.3671}},
-                        }
-                    ],
-                }
-            ),
-            MockResponse({"status": "ZERO_RESULTS", "results": []}),
-            httpx.ConnectError(
-                "network down",
-                request=httpx.Request(
-                    "GET",
-                    "https://maps.googleapis.com/maps/api/geocode/json",
-                ),
-            ),
-        ]
+        body = self._post_geocode(point, google_response)
 
-        with patch("httpx.Client.get", side_effect=responses):
-            response = self.client.post("/api/v1/geocode", json=payload)
+        self.assertEqual(body["points"][0]["geocode_status"], "ok")
+        self.assertEqual(body["points"][0]["geocode_precision"], "exact")
+        self.assertEqual(
+            body["start_point"]["address"],
+            "Киев, Индустриальный переулок, 23",
+        )
+
+    def test_geocode_endpoint_marks_acceptable_result(self) -> None:
+        point = {
+            "contact_name": "Acceptable",
+            "phone": "222",
+            "raw_address": "Sofiivska Borshchahivka, Soborna 126",
+            "clean_address": "Sofiivska Borshchahivka, Soborna 126",
+            "full_address": "Sofiivska Borshchahivka, Soborna 126",
+            "status": "valid",
+            "is_crossed": False,
+        }
+        google_response = MockResponse(
+            {
+                "status": "OK",
+                "results": [
+                    {
+                        "formatted_address": "Soborna St, 126, Sofiivska Borshchahivka, Ukraine",
+                        "types": ["street_address"],
+                        "address_components": [
+                            {"long_name": "126", "types": ["street_number"]},
+                            {"long_name": "Soborna St", "types": ["route"]},
+                        ],
+                        "geometry": {
+                            "location": {"lat": 50.4072, "lng": 30.3671},
+                            "location_type": "RANGE_INTERPOLATED",
+                        },
+                    }
+                ],
+            }
+        )
+
+        body = self._post_geocode(point, google_response)
+
+        self.assertEqual(body["points"][0]["geocode_status"], "ok")
+        self.assertEqual(body["points"][0]["geocode_precision"], "acceptable")
+
+    def test_geocode_endpoint_downgrades_city_level_result(self) -> None:
+        point = {
+            "contact_name": "TooGeneral",
+            "phone": "333",
+            "raw_address": "Kyiv",
+            "clean_address": "Kyiv",
+            "full_address": "Kyiv",
+            "status": "valid",
+            "is_crossed": False,
+        }
+        google_response = MockResponse(
+            {
+                "status": "OK",
+                "results": [
+                    {
+                        "formatted_address": "Kyiv, Ukraine",
+                        "types": ["locality", "political"],
+                        "address_components": [
+                            {"long_name": "Kyiv", "types": ["locality", "political"]},
+                            {"long_name": "Ukraine", "types": ["country", "political"]},
+                        ],
+                        "geometry": {
+                            "location": {"lat": 50.4501, "lng": 30.5234},
+                            "location_type": "APPROXIMATE",
+                        },
+                    }
+                ],
+            }
+        )
+
+        body = self._post_geocode(point, google_response)
+
+        self.assertEqual(body["points"][0]["geocode_status"], "not_found")
+        self.assertEqual(body["points"][0]["geocode_precision"], "too_general")
+        self.assertEqual(body["points"][0]["status"], "skipped")
+        self.assertIsNone(body["points"][0]["formatted_address"])
+
+    def test_geocode_endpoint_rejects_missing_house_precision(self) -> None:
+        point = {
+            "contact_name": "MissingHouse",
+            "phone": "444",
+            "raw_address": "Kyiv, Test Street 10",
+            "clean_address": "Kyiv, Test Street 10",
+            "full_address": "Kyiv, Test Street 10",
+            "status": "valid",
+            "is_crossed": False,
+        }
+        google_response = MockResponse(
+            {
+                "status": "OK",
+                "results": [
+                    {
+                        "formatted_address": "Test Street, Kyiv, Ukraine",
+                        "types": ["route"],
+                        "address_components": [
+                            {"long_name": "Test Street", "types": ["route"]},
+                            {"long_name": "Kyiv", "types": ["locality", "political"]},
+                        ],
+                        "geometry": {
+                            "location": {"lat": 50.451, "lng": 30.52},
+                            "location_type": "GEOMETRIC_CENTER",
+                        },
+                    }
+                ],
+            }
+        )
+
+        body = self._post_geocode(point, google_response)
+
+        self.assertEqual(body["points"][0]["geocode_status"], "not_found")
+        self.assertEqual(body["points"][0]["geocode_precision"], "too_general")
+        self.assertEqual(body["points"][0]["status"], "skipped")
+        self.assertIsNone(body["points"][0]["lat"])
+        self.assertIsNone(body["points"][0]["lng"])
+
+    def test_skipped_point_remains_skipped(self) -> None:
+        response = self.client.post(
+            "/api/v1/geocode",
+            json={
+                "points": [
+                    {
+                        "contact_name": "Skipped",
+                        "phone": "555",
+                        "raw_address": "pickup",
+                        "clean_address": "Kyiv, pickup",
+                        "full_address": "pickup",
+                        "status": "skipped",
+                        "is_crossed": False,
+                    }
+                ]
+            },
+        )
 
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertEqual(body["points"][0]["geocode_status"], "ok")
-        self.assertEqual(body["points"][1]["geocode_status"], "ok")
-        self.assertEqual(body["points"][2]["geocode_status"], "skipped")
-        self.assertEqual(body["points"][3]["geocode_status"], "not_found")
-        self.assertEqual(body["points"][3]["status"], "skipped")
-        self.assertEqual(body["points"][4]["geocode_status"], "error")
+        self.assertEqual(body["points"][0]["geocode_status"], "skipped")
+        self.assertEqual(body["points"][0]["geocode_precision"], "unknown")
+        self.assertIsNone(body["points"][0]["formatted_address"])
 
     def test_geocode_endpoint_requires_api_key(self) -> None:
         settings.GOOGLE_MAPS_API_KEY = ""

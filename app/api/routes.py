@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException
 
 from app.core.config import settings
-from app.schemas.geocode import GeocodeRequest, GeocodeResponse
+from app.schemas.geocode import GeocodeRequest, GeocodeResponse, StartPoint
 from app.schemas.normalize import NormalizeRequest, NormalizeResponse
 from app.schemas.parse import ParseTextRequest, ParseTextResponse
-from app.services.geocoding_service import GeocodingService
+from app.services.geocoding_service import GeocodingService, ROUTE_START_POINT_ADDRESS
 from app.services.address_normalizer_service import AddressNormalizerService
 from app.services.address_parser_service import AddressParserService
 
@@ -40,4 +40,7 @@ async def geocode(payload: GeocodeRequest) -> GeocodeResponse:
         )
 
     points = geocoding_service.geocode_points(payload.points)
-    return GeocodeResponse(points=points)
+    return GeocodeResponse(
+        points=points,
+        start_point=StartPoint(address=ROUTE_START_POINT_ADDRESS),
+    )
