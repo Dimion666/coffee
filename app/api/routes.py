@@ -6,9 +6,11 @@ from app.schemas.geocode import GeocodeRequest, GeocodeResponse, StartPoint
 from app.schemas.normalize import NormalizeRequest, NormalizeResponse
 from app.schemas.optimize import OptimizeRequest, OptimizedRouteResult
 from app.schemas.parse import ParseTextRequest, ParseTextResponse
+from app.schemas.process_route import ProcessRouteRequest, ProcessRouteResponse
 from app.services.geocoding_service import GeocodingService, ROUTE_START_POINT_ADDRESS
 from app.services.address_normalizer_service import AddressNormalizerService
 from app.services.address_parser_service import AddressParserService
+from app.services.process_route_service import ProcessRouteService
 from app.services.route_optimizer_service import RouteOptimizerService
 from app.services.sheets_service import SheetsService
 
@@ -18,6 +20,10 @@ address_normalizer_service = AddressNormalizerService()
 geocoding_service = GeocodingService()
 route_optimizer_service = RouteOptimizerService(geocoding_service=geocoding_service)
 sheets_service = SheetsService()
+process_route_service = ProcessRouteService(
+    route_optimizer_service=route_optimizer_service,
+    sheets_service=sheets_service,
+)
 
 
 @router.get("/api/v1/system/ping", tags=["system"])
@@ -69,3 +75,18 @@ async def export_sheet(payload: ExportRequest) -> ExportResponse:
         return sheets_service.export_points(payload.points)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/v1/process-route",
+    response_model=ProcessRouteResponse,
+    tags=["process"],
+)
+async def process_route(payload: ProcessRouteRequest) -> ProcessRouteResponse:
+    if not settings.GOOGLE_MAPS_API_KEY.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="GOOGLE_MAPS_API_KEY is required for route processing.",
+        )
+
+    return process_route_service.process_route(payload.points)
