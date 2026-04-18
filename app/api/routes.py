@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
+from app.demo_scenarios import DEMO_SCENARIOS
 from app.core.config import settings
+from app.schemas.demo import DemoScenario, DemoScenariosResponse
 from app.schemas.export import ExportRequest, ExportResponse
 from app.schemas.geocode import GeocodeRequest, GeocodeResponse, StartPoint
 from app.schemas.normalize import NormalizeRequest, NormalizeResponse
@@ -37,6 +39,13 @@ process_route_text_service = ProcessRouteTextService(
 @router.get("/api/v1/system/ping", tags=["system"])
 async def ping() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@router.get("/api/v1/demo-scenarios", response_model=DemoScenariosResponse, tags=["demo"])
+async def demo_scenarios() -> DemoScenariosResponse:
+    return DemoScenariosResponse(
+        scenarios=[DemoScenario(**scenario) for scenario in DEMO_SCENARIOS]
+    )
 
 
 @router.post("/api/v1/parse/text", response_model=ParseTextResponse, tags=["parse"])
