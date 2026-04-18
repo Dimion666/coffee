@@ -19,6 +19,9 @@ class Settings(BaseModel):
     GOOGLE_SERVICE_ACCOUNT_FILE: str = Field(
         default="credentials/service_account.json"
     )
+    TESSERACT_CMD: str = Field(default="")
+    TESSERACT_LANG: str = Field(default="ukr+rus+eng")
+    TESSDATA_DIR: str = Field(default="")
 
     SQLITE_DB_PATH: str = Field(default="coffee.db")
 
@@ -53,6 +56,9 @@ def get_settings() -> Settings:
             "GOOGLE_SERVICE_ACCOUNT_FILE",
             "credentials/service_account.json",
         ),
+        TESSERACT_CMD=os.getenv("TESSERACT_CMD", ""),
+        TESSERACT_LANG=os.getenv("TESSERACT_LANG", "ukr+rus+eng"),
+        TESSDATA_DIR=os.getenv("TESSDATA_DIR", ""),
         SQLITE_DB_PATH=os.getenv("SQLITE_DB_PATH", "coffee.db"),
     )
 

@@ -24,6 +24,7 @@ The API starts on `http://127.0.0.1:8000`.
 - `GET /api/v1/system/ping`
 - `GET /api/v1/demo-scenarios`
 - `POST /api/v1/upload-route-photo`
+- `POST /api/v1/process-route-photo`
 - `POST /api/v1/parse/text`
 - `POST /api/v1/normalize`
 - `POST /api/v1/geocode`
@@ -43,9 +44,24 @@ The API starts on `http://127.0.0.1:8000`.
 - `GOOGLE_SHEETS_TARGET_RANGE`
 - `GOOGLE_APPLICATION_CREDENTIALS`
 - `GOOGLE_SERVICE_ACCOUNT_FILE`
+- `TESSERACT_CMD`
+- `TESSERACT_LANG`
+- `TESSDATA_DIR`
 - `SQLITE_DB_PATH`
 
 Copy `.env.example` to `.env` and fill in the values you need for local work.
+
+## OCR Setup
+
+`POST /api/v1/process-route-photo` uses Tesseract OCR through `pytesseract`.
+
+Local MVP setup:
+- install Tesseract OCR locally
+- keep `eng`, `rus`, and `ukr` traineddata available
+- optionally set `TESSERACT_CMD` if `tesseract.exe` is not in the default location
+- optionally set `TESSDATA_DIR` if traineddata are stored outside the system folder
+
+The project also auto-detects local traineddata from `.ocr-data/tessdata` when that folder exists.
 
 ## Demo Flow
 
@@ -110,11 +126,13 @@ Open `http://<your-local-ip>:8000/mobile` on the phone.
 
 Flow:
 - take a photo of the route sheet
-- tap `Загрузить фото`
-- wait for upload status from backend
+- tap `Распознать и обработать`
+- wait for OCR, route processing, and export to Google Sheets
 - use `Открыть Google Sheets` to jump to the table from the phone
 
 Expected success:
 - backend returns `success = true`
-- upload result shows filename, type, and size
+- response includes `extracted_text`
+- valid points receive `route_order`
+- `export.rows_written > 0`
 - Google Sheets link is visible on the page and opens the configured spreadsheet

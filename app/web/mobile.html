@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Coffee Mobile Upload</title>
+  <title>Coffee Mobile OCR</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -200,6 +200,26 @@
     .status.warn { background: #f8ebd8; color: var(--warn); }
     .status.error { background: #f7dde0; color: var(--error); }
 
+    .summary {
+      display: grid;
+      gap: 10px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #f0e2d3;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
     .result-list {
       margin: 0;
       padding: 0;
@@ -228,6 +248,19 @@
       line-height: 1.4;
     }
 
+    .extracted-text {
+      white-space: pre-wrap;
+      margin: 0;
+      padding: 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(140,79,43,0.14);
+      background: #fff;
+      font-size: 13px;
+      line-height: 1.45;
+      max-height: 240px;
+      overflow: auto;
+    }
+
     .footer-note {
       margin-top: 18px;
       color: var(--muted);
@@ -239,18 +272,18 @@
 <body>
   <main class="shell">
     <section class="hero">
-      <div class="eyebrow">Coffee mobile upload</div>
+      <div class="eyebrow">Coffee mobile OCR</div>
       <h1>Coffee</h1>
       <p class="sub">
-        Загрузите фото маршрутного листа с телефона. В этом блоке backend принимает изображение,
-        проверяет формат и размер, а страница показывает понятный статус загрузки.
+        Сфотографируйте маршрутный лист, отправьте его на backend и получите полный поток:
+        OCR, разбор точек, оптимизация маршрута и запись результата в Google Sheets.
       </p>
     </section>
 
     <div class="stack">
       <section class="card">
         <h2>1. Выберите фото</h2>
-        <p class="hint">Поддерживаются JPG и PNG. Файл не должен быть пустым или слишком большим.</p>
+        <p class="hint">Поддерживаются JPG и PNG. Снимок лучше делать при хорошем свете и ровно над листом.</p>
         <div class="dropzone">
           <label class="capture">
             <input id="imageInput" type="file" accept="image/jpeg,image/png" capture="environment">
@@ -261,22 +294,30 @@
       </section>
 
       <section class="card">
-        <h2>2. Отправьте файл</h2>
-        <p class="hint">Файл уходит в backend через multipart/form-data на upload endpoint.</p>
+        <h2>2. Обработайте фото</h2>
+        <p class="hint">Страница отправит файл на <code>/api/v1/process-route-photo</code>, а backend выполнит OCR и существующий pipeline.</p>
         <div class="actions">
-          <button id="uploadButton" class="primary" disabled>Загрузить фото</button>
+          <button id="uploadButton" class="primary" disabled>Распознать и обработать</button>
           <div id="uploadStatus" class="status info"></div>
           <a id="sheetLink" class="link-button secondary" href="__GOOGLE_SHEETS_URL__" target="_blank" rel="noreferrer">Открыть Google Sheets</a>
         </div>
       </section>
 
       <section class="card">
-        <h2>3. Результат</h2>
-        <ul id="resultList" class="result-list"></ul>
+        <h2>3. OCR текст</h2>
+        <pre id="extractedText" class="extracted-text">Здесь появится распознанный текст.</pre>
+      </section>
+
+      <section class="card">
+        <h2>4. Результат</h2>
+        <div class="summary">
+          <div id="summaryPills" class="pill-row"></div>
+          <ul id="resultList" class="result-list"></ul>
+        </div>
       </section>
     </div>
 
-    <p class="footer-note">Следующий блок сможет использовать это фото для OCR и полного route pipeline.</p>
+    <p class="footer-note">Если OCR отработал грязно, проверьте качество фото. Для MVP самый быстрый путь к таблице — один снимок и один запуск.</p>
   </main>
 
   <script>
@@ -284,6 +325,9 @@
     const preview = document.getElementById("preview");
     const uploadButton = document.getElementById("uploadButton");
     const uploadStatus = document.getElementById("uploadStatus");
+    const sheetLink = document.getElementById("sheetLink");
+    const extractedText = document.getElementById("extractedText");
+    const summaryPills = document.getElementById("summaryPills");
     const resultList = document.getElementById("resultList");
 
     let currentFile = null;
@@ -298,20 +342,41 @@
       uploadStatus.textContent = "";
     }
 
-    function renderResult(payload) {
+    function setSheetLink(spreadsheetId) {
+      if (!spreadsheetId) {
+        return;
+      }
+
+      sheetLink.href = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+    }
+
+    function renderSummary(payload) {
+      summaryPills.innerHTML = "";
       resultList.innerHTML = "";
 
-      const entries = [
-        ["Файл", payload.filename || "—"],
-        ["Тип", payload.content_type || "—"],
-        ["Размер", `${payload.file_size ?? 0} bytes`],
-        ["Сообщение", payload.message || "—"]
+      const pills = [
+        `Успех: ${payload.success ? "да" : "нет"}`,
+        `Распознано точек: ${payload.parsed_points_count ?? 0}`,
+        `Eligible: ${payload.optimization?.eligible_points ?? 0}`,
+        `Записано строк: ${payload.export?.rows_written ?? 0}`
       ];
 
-      entries.forEach(([label, value]) => {
+      pills.forEach((text) => {
+        const pill = document.createElement("div");
+        pill.className = "pill";
+        pill.textContent = text;
+        summaryPills.appendChild(pill);
+      });
+
+      (payload.points || []).forEach((point) => {
         const item = document.createElement("li");
         item.className = "result-item";
-        item.innerHTML = `<strong>${label}</strong><span>${value}</span>`;
+        const routeOrder = point.route_order == null ? "—" : point.route_order;
+        item.innerHTML = `
+          <strong>${point.contact_name || "Без контакта"}</strong>
+          <span>Порядок: ${routeOrder} | Статус: ${point.status} | Geocode: ${point.geocode_status}</span>
+          <span>${point.full_address || point.raw_address || "Адрес не найден"}</span>
+        `;
         resultList.appendChild(item);
       });
     }
@@ -320,6 +385,8 @@
       const file = imageInput.files?.[0];
       currentFile = file || null;
       uploadButton.disabled = !currentFile;
+      extractedText.textContent = "Здесь появится распознанный текст.";
+      summaryPills.innerHTML = "";
       resultList.innerHTML = "";
       clearStatus();
 
@@ -340,26 +407,34 @@
       }
 
       uploadButton.disabled = true;
-      setStatus("info", "Файл загружается в backend...");
+      setStatus("info", "Загружаю фото, запускаю OCR и route pipeline...");
 
       const formData = new FormData();
       formData.append("file", currentFile);
 
       try {
-        const response = await fetch("/api/v1/upload-route-photo", {
+        const response = await fetch("/api/v1/process-route-photo", {
           method: "POST",
           body: formData
         });
         const payload = await response.json();
 
         if (!response.ok) {
-          throw new Error(payload.detail || "Не удалось загрузить файл.");
+          throw new Error(payload.detail || "Не удалось обработать фото.");
         }
 
-        renderResult(payload);
-        setStatus("ok", `Загрузка успешна: ${payload.filename}.`);
+        extractedText.textContent = payload.extracted_text || "OCR не вернул текст.";
+        renderSummary(payload);
+        setSheetLink(payload.export?.spreadsheet_id);
+        setStatus(
+          payload.success ? "ok" : "warn",
+          payload.success
+            ? `Готово. OCR выполнен, точек: ${payload.parsed_points_count}, строк в Sheets: ${payload.export?.rows_written ?? 0}.`
+            : `Обработка завершилась с ошибкой: ${payload.error_message || "см. детали ниже"}.`
+        );
       } catch (error) {
-        setStatus("error", `Ошибка загрузки: ${error.message}`);
+        extractedText.textContent = "Распознанный текст недоступен.";
+        setStatus("error", `Ошибка обработки: ${error.message}`);
       } finally {
         uploadButton.disabled = !currentFile;
       }

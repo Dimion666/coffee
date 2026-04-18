@@ -4,6 +4,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.address_parser_service import AddressParserService
 
 
 class ProcessRouteTextEndpointTests(unittest.TestCase):
@@ -72,6 +73,22 @@ class ProcessRouteTextEndpointTests(unittest.TestCase):
         response = self.client.post("/api/v1/process-route-text", json={"text": "   "})
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["detail"], "Text payload must not be empty.")
+
+    def test_parser_accepts_transliterated_markers(self) -> None:
+        text = (
+            "Service header\n"
+            "Zakaz No 1001\n"
+            "Kontaktnoe lico: PETRENKO IVAN, tel. +38 067-123-45-67\n"
+            "Adres: Kyiv, Antonovycha 28\n"
+        )
+
+        points = AddressParserService().parse_route_text(text)
+
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0].contact_name, "PETRENKO IVAN")
+        self.assertEqual(points[0].phone, "+380671234567")
+        self.assertEqual(points[0].raw_address, "Kyiv, Antonovycha 28")
+        self.assertEqual(points[0].status, "valid")
 
 
 if __name__ == "__main__":

@@ -7,12 +7,33 @@ from app.schemas.parse import Point
 
 logger = get_logger(__name__)
 
-ORDER_DELIMITER_PATTERN = re.compile(r"Заказ\s*(?:№|No)", re.IGNORECASE)
-CONTACT_MARKER = "Контактное лицо"
-ADDRESS_MARKER = "Адрес:"
+ORDER_DELIMITER_PATTERN = re.compile(
+    r"(?:Заказ\s*(?:№|No)|Zakaz\s*(?:#|No)|Order\s*(?:#|No))",
+    re.IGNORECASE,
+)
+CONTACT_MARKER_PATTERNS = [
+    re.compile(r"Контактное\s+лицо", re.IGNORECASE),
+    re.compile(r"Kontaktnoe\s+lico", re.IGNORECASE),
+    re.compile(r"Kontaktna\s+osoba", re.IGNORECASE),
+    re.compile(r"Contact", re.IGNORECASE),
+]
+ADDRESS_MARKER_PATTERNS = [
+    re.compile(r"Адрес\s*:", re.IGNORECASE),
+    re.compile(r"Adres\s*:", re.IGNORECASE),
+    re.compile(r"Address\s*:", re.IGNORECASE),
+]
 PHONE_PATTERN = re.compile(r"(\+?\d[\d\s\-]{8,})")
-CONTACT_PHONE_SPLIT_PATTERN = re.compile(r"тел\.?", re.IGNORECASE)
+CONTACT_PHONE_SPLIT_PATTERN = re.compile(
+    r"(?:тел\.?|tel\.?|phone\s*:?)",
+    re.IGNORECASE,
+)
 MULTISPACE_PATTERN = re.compile(r"\s{2,}")
+SKIP_MARKERS = [
+    "самовивоз",
+    "самовывоз",
+    "samovyvoz",
+    "samovuvoz",
+]
 
 
 def _clean_text(value: str) -> str:
@@ -26,14 +47,22 @@ def _clean_inline_value(value: str) -> str:
     return cleaned.strip()
 
 
+def _extract_after_patterns(line: str, patterns: list[re.Pattern[str]]) -> str | None:
+    for pattern in patterns:
+        match = pattern.search(line)
+        if not match:
+            continue
+        return line[match.end() :].lstrip(": ").strip()
+    return None
+
+
 def _extract_contact_name(block: str) -> str:
     lines = block.split("\n")
     for index, line in enumerate(lines):
-        if CONTACT_MARKER not in line:
+        candidate = _extract_after_patterns(line, CONTACT_MARKER_PATTERNS)
+        if candidate is None:
             continue
 
-        _, remainder = line.split(CONTACT_MARKER, 1)
-        candidate = remainder.lstrip(": ").strip()
         if not candidate:
             for next_line in lines[index + 1 :]:
                 next_line = next_line.strip()
@@ -43,6 +72,23 @@ def _extract_contact_name(block: str) -> str:
 
         candidate = CONTACT_PHONE_SPLIT_PATTERN.split(candidate, maxsplit=1)[0]
         return _clean_inline_value(candidate)
+
+    for line in lines:
+        phone_match = PHONE_PATTERN.search(line)
+        if not phone_match:
+            continue
+
+        if _extract_after_patterns(line, ADDRESS_MARKER_PATTERNS) is not None:
+            continue
+
+        candidate = line[: phone_match.start()].strip(" ,")
+        if ":" in candidate:
+            candidate = candidate.split(":")[-1]
+
+        candidate = CONTACT_PHONE_SPLIT_PATTERN.split(candidate, maxsplit=1)[0]
+        candidate = _clean_inline_value(candidate)
+        if candidate:
+            return candidate
 
     return ""
 
@@ -56,11 +102,10 @@ def _extract_phone(block: str) -> str:
 
 def _extract_address(block: str) -> str:
     for line in block.split("\n"):
-        if ADDRESS_MARKER not in line:
+        remainder = _extract_after_patterns(line, ADDRESS_MARKER_PATTERNS)
+        if remainder is None:
             continue
-        _, remainder = line.split(ADDRESS_MARKER, 1)
-        address = _clean_inline_value(remainder)
-        return address
+        return _clean_inline_value(remainder)
     return ""
 
 
@@ -77,8 +122,9 @@ def parse_route_text(text: str) -> List[Point]:
         if not raw_address:
             continue
 
+        lowered_address = raw_address.lower()
         status = "valid"
-        if "самовивоз" in raw_address.lower() or "самовывоз" in raw_address.lower():
+        if any(marker in lowered_address for marker in SKIP_MARKERS):
             status = "skipped"
             skipped_points += 1
 

@@ -9,11 +9,14 @@ from app.schemas.normalize import NormalizeRequest, NormalizeResponse
 from app.schemas.optimize import OptimizeRequest, OptimizedRouteResult
 from app.schemas.parse import ParseTextRequest, ParseTextResponse
 from app.schemas.process_route import ProcessRouteRequest, ProcessRouteResponse
+from app.schemas.process_route_photo import ProcessRoutePhotoResponse
 from app.schemas.process_route_text import ProcessRouteTextResponse
 from app.schemas.upload import RoutePhotoUploadResponse
 from app.services.geocoding_service import GeocodingService, ROUTE_START_POINT_ADDRESS
 from app.services.address_normalizer_service import AddressNormalizerService
 from app.services.address_parser_service import AddressParserService
+from app.services.ocr_service import OCRService
+from app.services.process_route_photo_service import ProcessRoutePhotoService
 from app.services.process_route_service import ProcessRouteService
 from app.services.process_route_text_service import ProcessRouteTextService
 from app.services.route_photo_service import RoutePhotoService, RoutePhotoUploadError
@@ -26,6 +29,7 @@ address_normalizer_service = AddressNormalizerService()
 geocoding_service = GeocodingService()
 route_optimizer_service = RouteOptimizerService(geocoding_service=geocoding_service)
 sheets_service = SheetsService()
+ocr_service = OCRService()
 process_route_service = ProcessRouteService(
     route_optimizer_service=route_optimizer_service,
     sheets_service=sheets_service,
@@ -37,6 +41,11 @@ process_route_text_service = ProcessRouteTextService(
     process_route_service=process_route_service,
 )
 route_photo_service = RoutePhotoService()
+process_route_photo_service = ProcessRoutePhotoService(
+    route_photo_service=route_photo_service,
+    ocr_service=ocr_service,
+    process_route_text_service=process_route_text_service,
+)
 
 
 @router.get("/api/v1/system/ping", tags=["system"])
@@ -148,3 +157,27 @@ async def process_route_text(payload: ParseTextRequest) -> ProcessRouteTextRespo
         return process_route_text_service.process_route_text(payload.text)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/api/v1/process-route-photo",
+    response_model=ProcessRoutePhotoResponse,
+    tags=["process"],
+)
+async def process_route_photo(
+    file: UploadFile | None = File(default=None),
+) -> ProcessRoutePhotoResponse:
+    if not settings.GOOGLE_MAPS_API_KEY.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="GOOGLE_MAPS_API_KEY is required for route processing.",
+        )
+
+    try:
+        return await process_route_photo_service.process_route_photo(file)
+    except RoutePhotoUploadError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

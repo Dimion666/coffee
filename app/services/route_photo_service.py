@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -24,11 +25,19 @@ class RoutePhotoUploadError(ValueError):
         self.status_code = status_code
 
 
+@dataclass
+class RoutePhotoFile:
+    filename: str
+    content_type: str
+    file_size: int
+    content: bytes
+
+
 class RoutePhotoService:
-    async def inspect_upload(
+    async def read_upload(
         self,
         file: UploadFile | None,
-    ) -> RoutePhotoUploadResponse:
+    ) -> RoutePhotoFile:
         if file is None:
             raise RoutePhotoUploadError("File field is required.")
 
@@ -65,10 +74,23 @@ class RoutePhotoService:
                 status_code=413,
             )
 
-        return RoutePhotoUploadResponse(
-            success=True,
+        return RoutePhotoFile(
             filename=filename,
             content_type=content_type,
             file_size=file_size,
+            content=content,
+        )
+
+    async def inspect_upload(
+        self,
+        file: UploadFile | None,
+    ) -> RoutePhotoUploadResponse:
+        route_photo = await self.read_upload(file)
+
+        return RoutePhotoUploadResponse(
+            success=True,
+            filename=route_photo.filename,
+            content_type=route_photo.content_type,
+            file_size=route_photo.file_size,
             message="uploaded",
         )

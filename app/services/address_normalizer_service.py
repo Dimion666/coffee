@@ -27,6 +27,12 @@ CITY_MARKERS = [
     "софіївська борщагівка",
     "коцюбинское",
     "коцюбинське",
+    "kyiv",
+    "kiev",
+    "sofiivska borshchahivka",
+    "sofievskaya borshchagovka",
+    "kotsiubynske",
+    "kotsyubinskoe",
 ]
 
 
