@@ -102,3 +102,21 @@ Request body:
 - Confirm at least one valid point has `route_order`.
 - Confirm `export.success = true` and `rows_written > 0`.
 - Open the configured Google Sheet and verify the written rows match the response.
+
+## Mobile Flow
+
+Open `http://<your-local-ip>:8000/mobile` on the phone.
+
+Flow:
+- take a photo of the route sheet
+- wait for OCR in the browser
+- correct text if needed
+- tap `Обработать маршрут и записать в Sheets`
+- open the Google Sheets button after success
+
+Expected success:
+- OCR fills the text area
+- backend returns `success = true`
+- valid points receive `route_order`
+- Google Sheets button appears
+- written rows match the latest run in the configured worksheet

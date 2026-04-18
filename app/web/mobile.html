@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coffee Mobile Route Flow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4eadf;
+      --paper: #fffaf4;
+      --ink: #2a211c;
+      --muted: #6d5b50;
+      --line: #d9c6b5;
+      --accent: #8c4f2b;
+      --accent-strong: #6d3615;
+      --accent-soft: #ead2bf;
+      --ok: #23583f;
+      --warn: #8a4b10;
+      --error: #8e2330;
+      --shadow: 0 18px 45px rgba(74, 43, 20, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Manrope", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,0.7), transparent 35%),
+        linear-gradient(180deg, #f9efe5 0%, #f3e7d9 35%, #efe1d1 100%);
+      min-height: 100vh;
+    }
+
+    .shell {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 20px 16px 56px;
+    }
+
+    .hero,
+    .card {
+      background: var(--paper);
+      border: 1px solid rgba(140, 79, 43, 0.12);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 22px 20px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -40px -60px auto;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(140,79,43,0.18), rgba(140,79,43,0));
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: 28px;
+      line-height: 1.05;
+      margin: 0 0 10px;
+      max-width: 12ch;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+      max-width: 54ch;
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .card {
+      padding: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .hint {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .dropzone {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .capture {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      min-height: 120px;
+      border: 2px dashed var(--line);
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(244,234,223,0.9));
+      text-align: center;
+      padding: 18px;
+      color: var(--accent-strong);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .capture input { display: none; }
+
+    .preview {
+      display: none;
+      width: 100%;
+      border-radius: 18px;
+      border: 1px solid rgba(140,79,43,0.18);
+      object-fit: cover;
+      max-height: 320px;
+      background: #f5f1eb;
+    }
+
+    .actions {
+      display: grid;
+      gap: 10px;
+    }
+
+    button,
+    .link-button {
+      border: 0;
+      border-radius: 16px;
+      min-height: 52px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button:hover,
+    .link-button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .secondary {
+      background: #eadfd1;
+      color: var(--ink);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .status {
+      display: none;
+      padding: 12px 14px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .status.visible { display: block; }
+    .status.info { background: #f1e4d5; color: var(--accent-strong); }
+    .status.ok { background: #dff1e6; color: var(--ok); }
+    .status.warn { background: #f8ebd8; color: var(--warn); }
+    .status.error { background: #f7dde0; color: var(--error); }
+
+    .summary {
+      display: grid;
+      gap: 10px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #f0e2d3;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .result-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .result-item {
+      border: 1px solid rgba(140,79,43,0.14);
+      border-radius: 18px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .result-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .result-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="eyebrow">Coffee mobile flow</div>
+      <h1>Фото листа в таблицу за один проход</h1>
+      <p class="sub">
+        Сфотографируйте маршрутный лист на телефоне, дождитесь OCR, при необходимости поправьте текст
+        и отправьте в существующий pipeline: обработка маршрута, оптимизация и запись в Google Sheets.
+      </p>
+    </section>
+
+    <div class="stack">
+      <section class="card">
+        <h2>1. Фото</h2>
+        <p class="hint">Снимок лучше делать при хорошем свете, чтобы адреса и телефоны были ровными и читаемыми.</p>
+        <div class="dropzone">
+          <label class="capture">
+            <input id="imageInput" type="file" accept="image/*" capture="environment">
+            <span>Нажмите, чтобы сделать фото или выбрать изображение</span>
+          </label>
+          <img id="preview" class="preview" alt="Предпросмотр фото">
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>2. OCR</h2>
+        <p class="hint">OCR выполняется прямо в браузере. После распознавания текст можно поправить вручную перед отправкой.</p>
+        <div class="actions">
+          <button id="ocrButton" class="secondary" disabled>Распознать текст</button>
+          <div id="ocrStatus" class="status info"></div>
+          <textarea id="ocrText" placeholder="Здесь появится распознанный текст. При необходимости поправьте ошибки и отправьте в pipeline."></textarea>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>3. Обработка и запись</h2>
+        <p class="hint">Этот шаг запускает существующий backend flow: parse -> normalize -> geocode -> optimize -> export.</p>
+        <div class="actions">
+          <button id="processButton" class="primary" disabled>Обработать маршрут и записать в Sheets</button>
+          <div id="processStatus" class="status info"></div>
+          <a id="sheetLink" class="link-button secondary" href="#" target="_blank" rel="noreferrer" style="display:none;">Открыть Google Sheets</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>4. Результат</h2>
+        <div class="summary">
+          <div id="summaryPills" class="pill-row"></div>
+          <ul id="resultList" class="result-list"></ul>
+        </div>
+      </section>
+    </div>
+
+    <p class="footer-note">Если OCR распознал текст грязно, поправьте адреса и телефоны в поле перед отправкой. Это самый быстрый путь к стабильному demo на телефоне.</p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+    const imageInput = document.getElementById("imageInput");
+    const preview = document.getElementById("preview");
+    const ocrButton = document.getElementById("ocrButton");
+    const processButton = document.getElementById("processButton");
+    const ocrText = document.getElementById("ocrText");
+    const ocrStatus = document.getElementById("ocrStatus");
+    const processStatus = document.getElementById("processStatus");
+    const sheetLink = document.getElementById("sheetLink");
+    const summaryPills = document.getElementById("summaryPills");
+    const resultList = document.getElementById("resultList");
+
+    let currentFile = null;
+
+    function setStatus(element, tone, message) {
+      element.className = `status visible ${tone}`;
+      element.textContent = message;
+    }
+
+    function clearStatus(element) {
+      element.className = "status info";
+      element.textContent = "";
+    }
+
+    function setSheetLink(spreadsheetId) {
+      if (!spreadsheetId) {
+        sheetLink.style.display = "none";
+        sheetLink.href = "#";
+        return;
+      }
+
+      sheetLink.href = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+      sheetLink.style.display = "inline-flex";
+    }
+
+    function renderResult(response) {
+      summaryPills.innerHTML = "";
+      resultList.innerHTML = "";
+
+      const pills = [
+        `Успех: ${response.success ? "да" : "нет"}`,
+        `Распознано точек: ${response.parsed_points_count ?? 0}`,
+        `Eligible: ${response.optimization?.eligible_points ?? 0}`,
+        `Записано строк: ${response.export?.rows_written ?? 0}`
+      ];
+
+      pills.forEach((text) => {
+        const pill = document.createElement("div");
+        pill.className = "pill";
+        pill.textContent = text;
+        summaryPills.appendChild(pill);
+      });
+
+      (response.points || []).forEach((point) => {
+        const item = document.createElement("li");
+        item.className = "result-item";
+        const routeOrder = point.route_order == null ? "—" : point.route_order;
+        item.innerHTML = `
+          <strong>${point.contact_name || "Без контакта"}</strong>
+          <span>Порядок: ${routeOrder} | Статус: ${point.status} | Geocode: ${point.geocode_status}</span>
+          <span>${point.full_address || point.raw_address || "Адрес не найден"}</span>
+        `;
+        resultList.appendChild(item);
+      });
+    }
+
+    imageInput.addEventListener("change", () => {
+      const file = imageInput.files?.[0];
+      currentFile = file || null;
+      ocrButton.disabled = !currentFile;
+      if (!currentFile) {
+        preview.style.display = "none";
+        processButton.disabled = !ocrText.value.trim();
+        return;
+      }
+
+      preview.src = URL.createObjectURL(currentFile);
+      preview.style.display = "block";
+      clearStatus(ocrStatus);
+    });
+
+    ocrText.addEventListener("input", () => {
+      processButton.disabled = !ocrText.value.trim();
+    });
+
+    ocrButton.addEventListener("click", async () => {
+      if (!currentFile) return;
+
+      ocrButton.disabled = true;
+      processButton.disabled = true;
+      setStatus(ocrStatus, "info", "OCR запущен. Это может занять до минуты на телефоне.");
+
+      try {
+        const result = await Tesseract.recognize(currentFile, "ukr+rus+eng", {
+          logger: (message) => {
+            if (message.status === "recognizing text" && typeof message.progress === "number") {
+              const percent = Math.round(message.progress * 100);
+              setStatus(ocrStatus, "info", `OCR: ${percent}%`);
+            }
+          }
+        });
+
+        ocrText.value = result.data.text.trim();
+        processButton.disabled = !ocrText.value.trim();
+        setStatus(ocrStatus, "ok", "Текст распознан. Проверьте и при необходимости поправьте перед отправкой.");
+      } catch (error) {
+        setStatus(ocrStatus, "error", `OCR не удалось выполнить: ${error.message}`);
+      } finally {
+        ocrButton.disabled = !currentFile;
+      }
+    });
+
+    processButton.addEventListener("click", async () => {
+      const text = ocrText.value.trim();
+      if (!text) {
+        setStatus(processStatus, "warn", "Сначала распознайте фото или вставьте текст вручную.");
+        return;
+      }
+
+      processButton.disabled = true;
+      setSheetLink(null);
+      setStatus(processStatus, "info", "Запускаю pipeline: parse -> optimize -> export.");
+
+      try {
+        const response = await fetch("/api/v1/process-route-text", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ text })
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.detail || "Не удалось обработать маршрут.");
+        }
+
+        renderResult(payload);
+        setSheetLink(payload.export?.spreadsheet_id);
+        setStatus(
+          processStatus,
+          payload.success ? "ok" : "warn",
+          payload.success
+            ? `Готово. Записано строк: ${payload.export?.rows_written ?? 0}.`
+            : `Маршрут обработан с ошибкой: ${payload.error_message || "см. детали ниже"}.`
+        );
+      } catch (error) {
+        setStatus(processStatus, "error", `Ошибка pipeline: ${error.message}`);
+      } finally {
+        processButton.disabled = !ocrText.value.trim();
+      }
+    });
+  </script>
+</body>
+</html>
