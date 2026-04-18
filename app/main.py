@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.api.routes import router as system_router
 from app.core.config import settings
@@ -26,8 +26,10 @@ async def root() -> RedirectResponse:
 
 
 @app.get("/mobile", include_in_schema=False)
-async def mobile_page() -> FileResponse:
-    return FileResponse(WEB_DIR / "mobile.html")
+async def mobile_page() -> HTMLResponse:
+    template = (WEB_DIR / "mobile.html").read_text(encoding="utf-8")
+    html = template.replace("__GOOGLE_SHEETS_URL__", settings.GOOGLE_SHEETS_URL)
+    return HTMLResponse(content=html)
 
 
 @app.on_event("startup")

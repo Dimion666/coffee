@@ -2,6 +2,7 @@ import unittest
 
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.main import app
 
 
@@ -19,6 +20,7 @@ class MobilePageTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Coffee Mobile Route Flow", response.text)
         self.assertIn("tesseract.js", response.text.lower())
+        self.assertIn(settings.GOOGLE_SHEETS_URL, response.text)
 
 
 if __name__ == "__main__":

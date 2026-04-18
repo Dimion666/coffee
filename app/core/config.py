@@ -22,6 +22,13 @@ class Settings(BaseModel):
 
     SQLITE_DB_PATH: str = Field(default="coffee.db")
 
+    @property
+    def GOOGLE_SHEETS_URL(self) -> str:
+        spreadsheet_id = self.GOOGLE_SHEETS_SPREADSHEET_ID.strip()
+        if not spreadsheet_id:
+            return ""
+        return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}"
+
 
 def get_settings() -> Settings:
     return Settings(

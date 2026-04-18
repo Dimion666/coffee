@@ -112,11 +112,11 @@ Flow:
 - wait for OCR in the browser
 - correct text if needed
 - tap `Обработать маршрут и записать в Sheets`
-- open the Google Sheets button after success
+- use `Открыть Google Sheets` to jump to the table from the phone
 
 Expected success:
 - OCR fills the text area
 - backend returns `success = true`
 - valid points receive `route_order`
-- Google Sheets button appears
+- Google Sheets link is visible on the page and opens the configured spreadsheet
 - written rows match the latest run in the configured worksheet

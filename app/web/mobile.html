@@ -313,7 +313,7 @@
         <div class="actions">
           <button id="processButton" class="primary" disabled>Обработать маршрут и записать в Sheets</button>
           <div id="processStatus" class="status info"></div>
-          <a id="sheetLink" class="link-button secondary" href="#" target="_blank" rel="noreferrer" style="display:none;">Открыть Google Sheets</a>
+          <a id="sheetLink" class="link-button secondary" href="__GOOGLE_SHEETS_URL__" target="_blank" rel="noreferrer">Открыть Google Sheets</a>
         </div>
       </section>
 
@@ -356,13 +356,10 @@
 
     function setSheetLink(spreadsheetId) {
       if (!spreadsheetId) {
-        sheetLink.style.display = "none";
-        sheetLink.href = "#";
         return;
       }
 
       sheetLink.href = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
-      sheetLink.style.display = "inline-flex";
     }
 
     function renderResult(response) {
