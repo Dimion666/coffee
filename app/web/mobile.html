@@ -113,6 +113,43 @@
       margin-top: 12px;
     }
 
+    .picker-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .picker-button {
+      min-height: 78px;
+      border: 2px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(244,234,223,0.95));
+      color: var(--accent-strong);
+      text-align: center;
+      line-height: 1.25;
+    }
+
+    .picker-button.camera {
+      background: linear-gradient(180deg, #8c4f2b, #6d3615);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .file-input-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .selected-file {
+      min-height: 22px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
     .capture {
       display: inline-flex;
       justify-content: center;
@@ -308,6 +345,10 @@
     }
 
     @media (max-width: 520px) {
+      .picker-actions {
+        grid-template-columns: 1fr;
+      }
+
       .pill-row {
         grid-template-columns: 1fr;
       }
@@ -343,10 +384,13 @@
           <li>Не снимайте под сильным наклоном и не обрезайте адреса.</li>
         </ul>
         <div class="dropzone">
-          <label class="capture">
-            <input id="imageInput" type="file" accept="image/jpeg,image/png">
-            <span>Нажмите, чтобы сделать фото или выбрать изображение</span>
-          </label>
+          <div class="picker-actions">
+            <button id="cameraButton" class="picker-button camera" type="button">Сделать фото</button>
+            <button id="galleryButton" class="picker-button" type="button">Выбрать изображение</button>
+          </div>
+          <input id="cameraInput" class="file-input-hidden" type="file" accept="image/jpeg,image/png" capture="environment">
+          <input id="galleryInput" class="file-input-hidden" type="file" accept="image/jpeg,image/png">
+          <p id="selectedFileName" class="selected-file">Файл пока не выбран.</p>
           <img id="preview" class="preview" alt="Предпросмотр фото">
         </div>
       </section>
@@ -380,7 +424,11 @@
   </main>
 
   <script>
-    const imageInput = document.getElementById("imageInput");
+    const cameraInput = document.getElementById("cameraInput");
+    const galleryInput = document.getElementById("galleryInput");
+    const cameraButton = document.getElementById("cameraButton");
+    const galleryButton = document.getElementById("galleryButton");
+    const selectedFileName = document.getElementById("selectedFileName");
     const preview = document.getElementById("preview");
     const uploadButton = document.getElementById("uploadButton");
     const uploadStatus = document.getElementById("uploadStatus");
@@ -504,8 +552,12 @@
       });
     }
 
-    imageInput.addEventListener("change", () => {
-      const file = imageInput.files?.[0];
+    function openImagePicker(input) {
+      input.value = "";
+      input.click();
+    }
+
+    function handleImageSelected(file) {
       currentFile = file || null;
       uploadButton.disabled = !currentFile;
       extractedText.textContent = "Здесь появится распознанный текст.";
@@ -517,12 +569,19 @@
       if (!currentFile) {
         preview.style.display = "none";
         preview.removeAttribute("src");
+        selectedFileName.textContent = "Файл пока не выбран.";
         return;
       }
 
+      selectedFileName.textContent = `Выбран файл: ${currentFile.name}`;
       preview.src = URL.createObjectURL(currentFile);
       preview.style.display = "block";
-    });
+    }
+
+    cameraButton.addEventListener("click", () => openImagePicker(cameraInput));
+    galleryButton.addEventListener("click", () => openImagePicker(galleryInput));
+    cameraInput.addEventListener("change", () => handleImageSelected(cameraInput.files?.[0]));
+    galleryInput.addEventListener("change", () => handleImageSelected(galleryInput.files?.[0]));
 
     uploadButton.addEventListener("click", async () => {
       if (!currentFile) {
