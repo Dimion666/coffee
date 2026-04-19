@@ -144,3 +144,75 @@ If the result is weak:
 - use good light
 - keep the whole sheet in frame
 - avoid strong tilt and cropped addresses
+
+## Render Deployment
+
+Coffee is prepared for Render as a Docker web service because the mobile photo
+flow needs the system `tesseract` binary and Ukrainian/Russian OCR language
+packs.
+
+Render files:
+- `Dockerfile` installs Python 3.11 dependencies and Tesseract OCR.
+- `render.yaml` declares the web service, health check, and non-secret env keys.
+- `.dockerignore` excludes local secrets, credentials, logs, caches, and tests
+  from the Docker build context.
+
+Production start command inside the Docker image:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+```
+
+Render provides `PORT` automatically. The service must be opened at:
+
+```text
+https://<your-render-service>.onrender.com/mobile
+```
+
+Manual Render setup:
+- push this commit to the Git repository connected to Render
+- in Render Dashboard create a new Blueprint from `render.yaml`, or create a new
+  Web Service with runtime `Docker`
+- use the repository root as the Docker context
+- keep the health check path as `/health`
+- add the env variables below
+- add the service account JSON as a Secret File named `service_account.json`
+- deploy and open the generated `https://*.onrender.com/mobile` URL
+
+Required Render environment variables:
+- `APP_ENV=production`
+- `APP_HOST=0.0.0.0`
+- `GOOGLE_MAPS_API_KEY`
+- `GOOGLE_SHEETS_SPREADSHEET_ID`
+- `GOOGLE_SHEETS_WORKSHEET_NAME=routes`
+- `GOOGLE_SHEETS_TARGET_RANGE=routes!A:C`
+- `GOOGLE_APPLICATION_CREDENTIALS=/etc/secrets/service_account.json`
+- `GOOGLE_SERVICE_ACCOUNT_FILE=/etc/secrets/service_account.json`
+- `TESSERACT_CMD=/usr/bin/tesseract`
+- `TESSERACT_LANG=ukr+rus+eng`
+- `TESSDATA_DIR=/usr/share/tesseract-ocr/5/tessdata`
+- `SQLITE_DB_PATH=coffee.db`
+
+Do not add secrets to git. In Render Dashboard, add the service account JSON as
+a Secret File:
+
+```text
+Filename: service_account.json
+Runtime path: /etc/secrets/service_account.json
+```
+
+The service account email must have Editor access to the target Google Sheet.
+
+Render smoke test after deploy:
+- open `GET /health`
+- open `GET /docs`
+- open `GET /mobile`
+- upload a route sheet photo from `/mobile`
+- confirm `success = true`, `route_order` is assigned, and `export.rows_written > 0`
+- open the Google Sheets link from the page and confirm rows appeared
+
+If `/api/v1/process-route-photo` fails on Render, check the Render logs first:
+- `Tesseract OCR executable was not found` means the service is not running the Docker image or `TESSERACT_CMD` is wrong.
+- `Error opening data file` means `TESSDATA_DIR` or language packs are wrong.
+- `Google Sheets credentials file not found` means the Render Secret File is missing or the credentials path env value is wrong.
+- Google API `403` usually means API access, billing, or service account sharing is not configured.

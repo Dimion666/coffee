@@ -1,0 +1,17 @@
+.env
+.git
+.gitignore
+.ocr-data
+.pytest_cache
+.server.pid
+__pycache__
+*.log
+*.pyc
+backend.err.log
+backend.out.log
+coffee.db
+credentials
+service_account.json
+tests
+venv
+.venv

@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: coffee
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_HOST
+        value: 0.0.0.0
+      - key: APP_PORT
+        value: 8000
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: GOOGLE_SHEETS_SPREADSHEET_ID
+        sync: false
+      - key: GOOGLE_SHEETS_WORKSHEET_NAME
+        value: routes
+      - key: GOOGLE_SHEETS_TARGET_RANGE
+        value: routes!A:C
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/service_account.json
+      - key: GOOGLE_SERVICE_ACCOUNT_FILE
+        value: /etc/secrets/service_account.json
+      - key: TESSERACT_CMD
+        value: /usr/bin/tesseract
+      - key: TESSERACT_LANG
+        value: ukr+rus+eng
+      - key: TESSDATA_DIR
+        value: /usr/share/tesseract-ocr/5/tessdata
+      - key: SQLITE_DB_PATH
+        value: coffee.db
