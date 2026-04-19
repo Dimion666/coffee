@@ -21,6 +21,10 @@ class MobilePageTests(unittest.TestCase):
         self.assertIn("Coffee Mobile OCR", response.text)
         self.assertIn("uploadButton", response.text)
         self.assertIn("/api/v1/process-route-photo", response.text)
+        self.assertIn("Фотографируйте сверху", response.text)
+        self.assertIn("qualityNotice", response.text)
+        self.assertIn("rows_written", response.text)
+        self.assertIn("Valid / skipped", response.text)
         self.assertIn(settings.GOOGLE_SHEETS_URL, response.text)
 
 

@@ -136,3 +136,5 @@ Expected success:
 - valid points receive `route_order`
 - `export.rows_written > 0`
 - Google Sheets link is visible on the page and opens the configured spreadsheet
+- mobile page shows parsed points, valid/skipped counts, optimize/export status, and rows written
+- if OCR is weak, mobile page shows a clear reshoot hint instead of an empty result

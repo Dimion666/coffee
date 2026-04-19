@@ -205,19 +205,60 @@
       gap: 10px;
     }
 
-    .pill-row {
-      display: flex;
-      flex-wrap: wrap;
+    .checklist {
+      display: grid;
       gap: 8px;
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .checklist li {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid rgba(140,79,43,0.12);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .pill-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
     }
 
     .pill {
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: #f0e2d3;
+      display: grid;
+      gap: 4px;
+      padding: 12px;
+      border-radius: 16px;
+      background: #fff;
+      border: 1px solid rgba(140,79,43,0.14);
       color: var(--ink);
-      font-size: 13px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .pill small {
+      color: var(--muted);
+      font-size: 12px;
       font-weight: 700;
+    }
+
+    .quality-notice {
+      display: none;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: #f8ebd8;
+      color: var(--warn);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .quality-notice.visible {
+      display: block;
     }
 
     .result-list {
@@ -261,6 +302,12 @@
       overflow: auto;
     }
 
+    @media (max-width: 520px) {
+      .pill-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .footer-note {
       margin-top: 18px;
       color: var(--muted);
@@ -283,7 +330,13 @@
     <div class="stack">
       <section class="card">
         <h2>1. Выберите фото</h2>
-        <p class="hint">Поддерживаются JPG и PNG. Снимок лучше делать при хорошем свете и ровно над листом.</p>
+        <p class="hint">Поддерживаются JPG и PNG. Для первого реального теста лучше сделать один четкий снимок всего листа.</p>
+        <ul class="checklist">
+          <li>Фотографируйте сверху, почти параллельно листу.</li>
+          <li>Включите хороший свет и избегайте теней от телефона.</li>
+          <li>Весь маршрутный лист должен быть в кадре.</li>
+          <li>Не снимайте под сильным наклоном и не обрезайте адреса.</li>
+        </ul>
         <div class="dropzone">
           <label class="capture">
             <input id="imageInput" type="file" accept="image/jpeg,image/png" capture="environment">
@@ -311,6 +364,7 @@
       <section class="card">
         <h2>4. Результат</h2>
         <div class="summary">
+          <div id="qualityNotice" class="quality-notice"></div>
           <div id="summaryPills" class="pill-row"></div>
           <ul id="resultList" class="result-list"></ul>
         </div>
@@ -327,6 +381,7 @@
     const uploadStatus = document.getElementById("uploadStatus");
     const sheetLink = document.getElementById("sheetLink");
     const extractedText = document.getElementById("extractedText");
+    const qualityNotice = document.getElementById("qualityNotice");
     const summaryPills = document.getElementById("summaryPills");
     const resultList = document.getElementById("resultList");
 
@@ -350,25 +405,70 @@
       sheetLink.href = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
     }
 
+    function showQualityNotice(message) {
+      qualityNotice.className = "quality-notice visible";
+      qualityNotice.textContent = message;
+    }
+
+    function clearQualityNotice() {
+      qualityNotice.className = "quality-notice";
+      qualityNotice.textContent = "";
+    }
+
+    function addMetric(label, value, hint) {
+      const pill = document.createElement("div");
+      pill.className = "pill";
+      const labelNode = document.createElement("small");
+      labelNode.textContent = label;
+      const valueNode = document.createElement("span");
+      valueNode.textContent = value;
+      pill.appendChild(labelNode);
+      pill.appendChild(valueNode);
+      if (hint) {
+        const hintNode = document.createElement("small");
+        hintNode.textContent = hint;
+        pill.appendChild(hintNode);
+      }
+      summaryPills.appendChild(pill);
+    }
+
     function renderSummary(payload) {
       summaryPills.innerHTML = "";
       resultList.innerHTML = "";
+      clearQualityNotice();
 
-      const pills = [
-        `Успех: ${payload.success ? "да" : "нет"}`,
-        `Распознано точек: ${payload.parsed_points_count ?? 0}`,
-        `Eligible: ${payload.optimization?.eligible_points ?? 0}`,
-        `Записано строк: ${payload.export?.rows_written ?? 0}`
-      ];
+      const points = payload.points || [];
+      const validCount = points.filter((point) => point.status === "valid").length;
+      const skippedCount = points.filter((point) => point.status === "skipped").length;
+      const optimizationOk = payload.optimization?.success === true;
+      const exportOk = payload.export?.success === true;
 
-      pills.forEach((text) => {
-        const pill = document.createElement("div");
-        pill.className = "pill";
-        pill.textContent = text;
-        summaryPills.appendChild(pill);
-      });
+      addMetric("Статус", payload.success ? "Готово" : "Есть проблема", payload.error_message || "");
+      addMetric("OCR / точки", `${payload.parsed_points_count ?? 0}`, "распознано после парсинга");
+      addMetric("Valid / skipped", `${validCount} / ${skippedCount}`, "точки для маршрута / пропущены");
+      addMetric("Optimize", optimizationOk ? "успешно" : "ошибка", `${payload.optimization?.eligible_points ?? 0} eligible`);
+      addMetric("Export", exportOk ? "успешно" : "ошибка", `${payload.export?.rows_written ?? 0} rows_written`);
 
-      (payload.points || []).forEach((point) => {
+      if (!payload.extracted_text?.trim()) {
+        showQualityNotice("OCR не вернул текст. Сделайте фото ровнее, при хорошем свете, чтобы весь лист был в кадре.");
+      } else if ((payload.parsed_points_count ?? 0) === 0 || validCount === 0) {
+        showQualityNotice("Результат слабый: маршрутные точки не найдены. Попробуйте переснять лист сверху, без наклона и бликов.");
+      } else if (!optimizationOk || !exportOk) {
+        showQualityNotice("Фото распознано, но один из backend-шагов завершился с ошибкой. Проверьте статус optimize/export ниже.");
+      }
+
+      if (!points.length) {
+        const item = document.createElement("li");
+        item.className = "result-item";
+        item.innerHTML = `
+          <strong>Точки не найдены</strong>
+          <span>Сделайте фото четче: сверху, при хорошем свете, весь лист в кадре.</span>
+        `;
+        resultList.appendChild(item);
+        return;
+      }
+
+      points.forEach((point) => {
         const item = document.createElement("li");
         item.className = "result-item";
         const routeOrder = point.route_order == null ? "—" : point.route_order;
@@ -388,6 +488,7 @@
       extractedText.textContent = "Здесь появится распознанный текст.";
       summaryPills.innerHTML = "";
       resultList.innerHTML = "";
+      clearQualityNotice();
       clearStatus();
 
       if (!currentFile) {
@@ -407,7 +508,7 @@
       }
 
       uploadButton.disabled = true;
-      setStatus("info", "Загружаю фото, запускаю OCR и route pipeline...");
+      setStatus("info", "Загружаю фото. OCR и обработка маршрута могут занять до минуты.");
 
       const formData = new FormData();
       formData.append("file", currentFile);
@@ -434,6 +535,9 @@
         );
       } catch (error) {
         extractedText.textContent = "Распознанный текст недоступен.";
+        summaryPills.innerHTML = "";
+        resultList.innerHTML = "";
+        showQualityNotice("Не получилось обработать фото. Попробуйте переснять маршрутный лист ровнее, четче и при хорошем свете.");
         setStatus("error", `Ошибка обработки: ${error.message}`);
       } finally {
         uploadButton.disabled = !currentFile;
