@@ -261,6 +261,11 @@
       display: block;
     }
 
+    .quality-notice.error {
+      background: #f7dde0;
+      color: var(--error);
+    }
+
     .result-list {
       margin: 0;
       padding: 0;
@@ -405,8 +410,8 @@
       sheetLink.href = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
     }
 
-    function showQualityNotice(message) {
-      qualityNotice.className = "quality-notice visible";
+    function showQualityNotice(message, tone = "warn") {
+      qualityNotice.className = `quality-notice visible ${tone}`;
       qualityNotice.textContent = message;
     }
 
@@ -432,6 +437,21 @@
       summaryPills.appendChild(pill);
     }
 
+    function getOverallStatus(payload, validCount, skippedCount) {
+      const optimizationOk = payload.optimization?.success === true;
+      const exportOk = payload.export?.success === true;
+
+      if (!payload.success || !optimizationOk || !exportOk) {
+        return "error";
+      }
+
+      if (skippedCount > 0 || validCount === 0) {
+        return "partial success";
+      }
+
+      return "success";
+    }
+
     function renderSummary(payload) {
       summaryPills.innerHTML = "";
       resultList.innerHTML = "";
@@ -442,19 +462,22 @@
       const skippedCount = points.filter((point) => point.status === "skipped").length;
       const optimizationOk = payload.optimization?.success === true;
       const exportOk = payload.export?.success === true;
+      const overallStatus = getOverallStatus(payload, validCount, skippedCount);
 
-      addMetric("Статус", payload.success ? "Готово" : "Есть проблема", payload.error_message || "");
+      addMetric("Общий статус", overallStatus, payload.error_message || "");
       addMetric("OCR / точки", `${payload.parsed_points_count ?? 0}`, "распознано после парсинга");
       addMetric("Valid / skipped", `${validCount} / ${skippedCount}`, "точки для маршрута / пропущены");
       addMetric("Optimize", optimizationOk ? "успешно" : "ошибка", `${payload.optimization?.eligible_points ?? 0} eligible`);
       addMetric("Export", exportOk ? "успешно" : "ошибка", `${payload.export?.rows_written ?? 0} rows_written`);
 
       if (!payload.extracted_text?.trim()) {
-        showQualityNotice("OCR не вернул текст. Сделайте фото ровнее, при хорошем свете, чтобы весь лист был в кадре.");
+        showQualityNotice("OCR не вернул текст. Сделайте фото ровнее, при хорошем свете, чтобы весь лист был в кадре.", "error");
       } else if ((payload.parsed_points_count ?? 0) === 0 || validCount === 0) {
-        showQualityNotice("Результат слабый: маршрутные точки не найдены. Попробуйте переснять лист сверху, без наклона и бликов.");
+        showQualityNotice("Результат слабый: маршрутные точки не найдены. Попробуйте переснять лист сверху, без наклона и бликов.", "error");
+      } else if (skippedCount > 0) {
+        showQualityNotice(`Partial success: ${skippedCount} точек пропущено. Проверьте OCR preview и при необходимости переснимите лист ровнее.`);
       } else if (!optimizationOk || !exportOk) {
-        showQualityNotice("Фото распознано, но один из backend-шагов завершился с ошибкой. Проверьте статус optimize/export ниже.");
+        showQualityNotice("Фото распознано, но один из backend-шагов завершился с ошибкой. Проверьте статус optimize/export ниже.", "error");
       }
 
       if (!points.length) {
@@ -527,17 +550,21 @@
         extractedText.textContent = payload.extracted_text || "OCR не вернул текст.";
         renderSummary(payload);
         setSheetLink(payload.export?.spreadsheet_id);
+        const points = payload.points || [];
+        const validCount = points.filter((point) => point.status === "valid").length;
+        const skippedCount = points.filter((point) => point.status === "skipped").length;
+        const overallStatus = getOverallStatus(payload, validCount, skippedCount);
         setStatus(
-          payload.success ? "ok" : "warn",
-          payload.success
-            ? `Готово. OCR выполнен, точек: ${payload.parsed_points_count}, строк в Sheets: ${payload.export?.rows_written ?? 0}.`
-            : `Обработка завершилась с ошибкой: ${payload.error_message || "см. детали ниже"}.`
+          overallStatus === "success" ? "ok" : "warn",
+          overallStatus === "success"
+            ? `Success. OCR выполнен, valid: ${validCount}, skipped: ${skippedCount}, строк в Sheets: ${payload.export?.rows_written ?? 0}.`
+            : `${overallStatus}. OCR выполнен, valid: ${validCount}, skipped: ${skippedCount}, строк в Sheets: ${payload.export?.rows_written ?? 0}.`
         );
       } catch (error) {
         extractedText.textContent = "Распознанный текст недоступен.";
         summaryPills.innerHTML = "";
         resultList.innerHTML = "";
-        showQualityNotice("Не получилось обработать фото. Попробуйте переснять маршрутный лист ровнее, четче и при хорошем свете.");
+        showQualityNotice("Не получилось обработать фото. Попробуйте переснять маршрутный лист ровнее, четче и при хорошем свете.", "error");
         setStatus("error", `Ошибка обработки: ${error.message}`);
       } finally {
         uploadButton.disabled = !currentFile;
