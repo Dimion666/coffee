@@ -33,17 +33,19 @@ The API starts on `http://127.0.0.1:8000`.
 - `POST /api/v1/process-route`
 - `POST /api/v1/process-route-text`
 
-## Required environment variables
+## Environment variables
 
+Required for live route processing:
+- `GOOGLE_MAPS_API_KEY`
+- `GOOGLE_SHEETS_SPREADSHEET_ID`
+- one credentials path: `GOOGLE_APPLICATION_CREDENTIALS` or `GOOGLE_SERVICE_ACCOUNT_FILE`
+
+Common local/runtime config:
 - `APP_ENV`
 - `APP_HOST`
 - `APP_PORT`
-- `GOOGLE_MAPS_API_KEY`
-- `GOOGLE_SHEETS_SPREADSHEET_ID`
 - `GOOGLE_SHEETS_WORKSHEET_NAME`
 - `GOOGLE_SHEETS_TARGET_RANGE`
-- `GOOGLE_APPLICATION_CREDENTIALS`
-- `GOOGLE_SERVICE_ACCOUNT_FILE`
 - `TESSERACT_CMD`
 - `TESSERACT_LANG`
 - `TESSDATA_DIR`
@@ -163,7 +165,8 @@ Production start command inside the Docker image:
 uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
 
-Render provides `PORT` automatically. The service must be opened at:
+Render provides `PORT` automatically. The Docker start command uses `PORT`
+directly, so `APP_PORT` is not required in Render. The service must be opened at:
 
 ```text
 https://<your-render-service>.onrender.com/mobile
@@ -185,13 +188,17 @@ Required Render environment variables:
 - `GOOGLE_MAPS_API_KEY`
 - `GOOGLE_SHEETS_SPREADSHEET_ID`
 - `GOOGLE_SHEETS_WORKSHEET_NAME=routes`
-- `GOOGLE_SHEETS_TARGET_RANGE=routes!A:C`
+- `GOOGLE_SHEETS_TARGET_RANGE=routes!A:E`
 - `GOOGLE_APPLICATION_CREDENTIALS=/etc/secrets/service_account.json`
 - `GOOGLE_SERVICE_ACCOUNT_FILE=/etc/secrets/service_account.json`
 - `TESSERACT_CMD=/usr/bin/tesseract`
 - `TESSERACT_LANG=ukr+rus+eng`
 - `TESSDATA_DIR=/usr/share/tesseract-ocr/5/tessdata`
 - `SQLITE_DB_PATH=coffee.db`
+
+`GOOGLE_SHEETS_TARGET_RANGE=routes!A:E` matches the current export contract:
+five columns are written in this order: `route_order`, `formatted_address`,
+`phone`, `contact_name`, `full_address`.
 
 Do not add secrets to git. In Render Dashboard, add the service account JSON as
 a Secret File:

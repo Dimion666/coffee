@@ -9,8 +9,6 @@ services:
         value: production
       - key: APP_HOST
         value: 0.0.0.0
-      - key: APP_PORT
-        value: 8000
       - key: GOOGLE_MAPS_API_KEY
         sync: false
       - key: GOOGLE_SHEETS_SPREADSHEET_ID
@@ -18,7 +16,7 @@ services:
       - key: GOOGLE_SHEETS_WORKSHEET_NAME
         value: routes
       - key: GOOGLE_SHEETS_TARGET_RANGE
-        value: routes!A:C
+        value: routes!A:E
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: /etc/secrets/service_account.json
       - key: GOOGLE_SERVICE_ACCOUNT_FILE
