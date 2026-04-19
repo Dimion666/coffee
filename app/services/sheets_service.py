@@ -14,18 +14,10 @@ logger = get_logger(__name__)
 SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 SHEETS_HEADERS = [
     "route_order",
-    "contact_name",
-    "phone",
-    "raw_address",
-    "clean_address",
-    "full_address",
     "formatted_address",
-    "lat",
-    "lng",
-    "status",
-    "geocode_status",
-    "geocode_precision",
-    "is_crossed",
+    "phone",
+    "contact_name",
+    "full_address",
 ]
 
 
@@ -86,19 +78,26 @@ class SheetsService:
     def _point_to_row(self, point: OptimizedPoint) -> list[str | int | float | bool | None]:
         return [
             point.route_order,
-            point.contact_name,
-            point.phone,
-            point.raw_address,
-            point.clean_address,
-            point.full_address,
             point.formatted_address,
-            point.lat,
-            point.lng,
-            point.status,
-            point.geocode_status,
-            point.geocode_precision,
-            point.is_crossed,
+            point.phone,
+            point.contact_name,
+            point.full_address,
         ]
+
+    def _sort_points_for_export(self, points: list[OptimizedPoint]) -> list[OptimizedPoint]:
+        def sort_key(point: OptimizedPoint) -> tuple[int, int | float, str]:
+            if point.status == "valid" and point.route_order is not None:
+                return (0, point.route_order, point.contact_name)
+
+            if point.status == "skipped":
+                return (1, float("inf"), point.contact_name)
+
+            if point.route_order is None:
+                return (3, float("inf"), point.contact_name)
+
+            return (2, point.route_order, point.contact_name)
+
+        return sorted(points, key=sort_key)
 
     def export_points(self, points: list[OptimizedPoint]) -> ExportResponse:
         worksheet_name = settings.GOOGLE_SHEETS_WORKSHEET_NAME.strip() or "routes"
@@ -106,14 +105,17 @@ class SheetsService:
 
         try:
             self._ensure_worksheet_exists(sheets_api, spreadsheet_id, worksheet_name)
-            sheet_range = f"{worksheet_name}!A:M"
+            sheet_range = f"{worksheet_name}!A:Z"
 
             sheets_api.values().clear(
                 spreadsheetId=spreadsheet_id,
                 range=sheet_range,
             ).execute()
 
-            values = [SHEETS_HEADERS] + [self._point_to_row(point) for point in points]
+            sorted_points = self._sort_points_for_export(points)
+            values = [SHEETS_HEADERS] + [
+                self._point_to_row(point) for point in sorted_points
+            ]
             sheets_api.values().update(
                 spreadsheetId=spreadsheet_id,
                 range=f"{worksheet_name}!A1",
