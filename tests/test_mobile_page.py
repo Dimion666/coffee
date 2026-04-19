@@ -21,6 +21,8 @@ class MobilePageTests(unittest.TestCase):
         self.assertIn("Coffee Mobile OCR", response.text)
         self.assertIn("uploadButton", response.text)
         self.assertIn("/api/v1/process-route-photo", response.text)
+        self.assertIn('accept="image/jpeg,image/png"', response.text)
+        self.assertNotIn("capture=", response.text)
         self.assertIn("Фотографируйте сверху", response.text)
         self.assertIn("qualityNotice", response.text)
         self.assertIn("partial success", response.text)
