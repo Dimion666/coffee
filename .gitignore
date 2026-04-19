@@ -3,3 +3,6 @@ __pycache__/
 .env
 credentials/
 .ocr-data/
+.server.pid
+backend.err.log
+backend.out.log
